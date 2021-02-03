@@ -1,5 +1,8 @@
 package com.popov.research.service;
 
+import com.popov.research.domain.Achievement;
+import com.popov.research.domain.CombinedResult;
+import com.popov.research.domain.Department;
 import com.popov.research.domain.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +24,9 @@ public class CompletableFutureResearch {
     private static final String SPECIAL = BASE_URL+"/special";
     private static final String EXTREME = BASE_URL+"/extreme";
 
+    private static final String DEPARTMENT = BASE_URL+"/department";
+    private static final String ACHIEVEMENT = BASE_URL+"/achievement";
+
     private final RestTemplate restTemplate;
 
     /**
@@ -35,6 +41,25 @@ public class CompletableFutureResearch {
                 .thenCompose(defaultAndSpecialUser -> CompletableFuture.supplyAsync(() -> defaultAndSpecialUser +
                         ":" + restTemplate.getForObject(EXTREME, User.class).getName()))
                 .thenApply(result->first.concat(" ").concat(second).concat(" ").concat(result).concat("!"));
+
+        log.debug("Returned...");
+        return completableFuture;
+    }
+
+    /**
+     * Combine result step by step
+     */
+    public Future<CombinedResult> calculateAsyncNew(String first, String second) {
+
+        CombinedResult combinedResult = new CombinedResult();
+
+        CompletableFuture<CombinedResult> completableFuture = CompletableFuture
+                .supplyAsync(() -> combinedResult.user(restTemplate.getForObject(DEFAULT, User.class)))
+                .thenCompose(defaultUser -> CompletableFuture.supplyAsync(() ->
+                        combinedResult.department(restTemplate.getForObject(DEPARTMENT, Department.class))))
+                .thenCompose(defaultAndSpecialUser -> CompletableFuture.supplyAsync(() ->
+                        combinedResult.achievement(restTemplate.getForObject(ACHIEVEMENT, Achievement.class))))
+                .thenApply(result->combinedResult.welcome(first.concat(" ").concat(second)));
 
         log.debug("Returned...");
         return completableFuture;
@@ -58,7 +83,32 @@ public class CompletableFutureResearch {
         return combinedDataCompletionStage.toCompletableFuture();
     }
 
+    /**
+     * Alternative option for previous impl.
+     */
+    public Future<CombinedResult> calculateAsync2New(String first, String second) {
+
+        CompletableFuture<User> defaultStage = CompletableFuture.supplyAsync(() -> restTemplate.getForObject(DEFAULT, User.class));
+        CompletableFuture<Department> departmentStage = CompletableFuture.supplyAsync(() -> restTemplate.getForObject(DEPARTMENT, Department.class));
+        CompletableFuture<Achievement> achievementStage = CompletableFuture.supplyAsync(() -> restTemplate.getForObject(ACHIEVEMENT, Achievement.class));
+
+        CompletionStage<CombinedResult> combinedDataCompletionStage = CompletableFuture
+                .allOf(defaultStage, departmentStage, achievementStage)
+                .thenApply(ignoredVoid -> joinAllResults2(defaultStage.join(), departmentStage.join(), achievementStage.join()))
+                .thenApply(result->result.welcome(first.concat(" ").concat(second)));
+
+        log.debug("Returned...");
+        return combinedDataCompletionStage.toCompletableFuture();
+    }
+
     private String joinAllResults(User defaultUser, User specialUser, User extremeUser) {
         return defaultUser.getName().concat(":").concat(specialUser.getName()).concat(":").concat(extremeUser.getName());
+    }
+
+    private CombinedResult joinAllResults2(User user, Department department, Achievement achievement) {
+        return new CombinedResult()
+                .user(user)
+                .department(department)
+                .achievement(achievement);
     }
 }

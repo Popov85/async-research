@@ -1,5 +1,7 @@
 package com.popov.research.web;
 
+import com.popov.research.domain.Achievement;
+import com.popov.research.domain.Department;
 import com.popov.research.domain.User;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,5 +32,21 @@ public class UserController {
         Thread.sleep(2500);
         log.debug("Calculated third user");
         return new User("Valentine");
+    }
+
+    //-------------------------------------------------------
+
+    @GetMapping("/department")
+    public Department getDepartment() throws Exception {
+        Thread.sleep(2500);
+        log.debug("Calculated department");
+        return new Department("IT");
+    }
+
+    @GetMapping("/achievement")
+    public Achievement getAchievement() throws Exception {
+        Thread.sleep(2500);
+        log.debug("Calculated achievements");
+        return new Achievement("Award Best User");
     }
 }
